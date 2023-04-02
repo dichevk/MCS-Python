@@ -1,4 +1,4 @@
-This is the implementation of Monte-Carlo Simulation in Python.
+This is the implementation of Monte Carlo Simulation - The house always wins in Python.
  Pre-requisites are python3, pytest, SQLalchemy and pyFlask. More on these technologies:  
  https://docs.python.org/3/ 
  https://docs.pytest.org/en/7.1.x/contents.html 
