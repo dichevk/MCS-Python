@@ -1,30 +1,19 @@
-from flask import Flask, request, jsonify, render_template, url_for
-from flask_sqlalchemy import SQLAlchemy
-import random
+from flask import Flask, jsonify, request
 from typing import List, Union
+import random
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///casino.db'
 db = SQLAlchemy(app)
 
-class CasinoBet(db.model):
+class Play(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    total_money = db.Column(db.Float,nullable=False)
-    bet_money = db.Column(db.Float, nullable=False)
-    number_of_bets = db.Column(db.Integer, nullable=False)
-    user_input = db.Column(db.String, nullable=False)
-    num_iterations = db.Column(db.Integer, nullable=False)
-    def __repr__(self):
-        return '<CasinoBet %r>' %self.id
-
-
-final_funds: List[float] = []
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    total_money = db.Column(db.Float)
+    bet_money = db.Column(db.Float)
+    total_plays = db.Column(db.Integer)
+    input_string = db.Column(db.String(10))
+    ending_fund = db.Column(db.Float)
 
 def is_bet_even_or_odd(choice: str) -> Union[bool, str]:
     note = random.randint(1, 100)
@@ -52,8 +41,10 @@ def play(total_money: float, bet_money: float, total_plays: int, input_string: s
     if total_plays <= 0:
         return []
     if is_bet_even_or_odd(input_string) == "invalid input":
+        print("The input was invalid, please use even or odd")
         return None
     if total_money <= 0 or bet_money <= 0:
+        print("Cannot bet with no money")
         return None
 
     num_of_plays: List[int] = []
@@ -64,7 +55,8 @@ def play(total_money: float, bet_money: float, total_plays: int, input_string: s
     for play_amount in range(total_plays):
         # we win
         if is_bet_even_or_odd(input_string) == "invalid input":
-            return None
+            print("The input was invalid, please use even or odd")
+            return
         if is_bet_even_or_odd(input_string):
             # Add the money to the fund
             total_money = total_money + bet_money
@@ -76,28 +68,27 @@ def play(total_money: float, bet_money: float, total_plays: int, input_string: s
         # Add the new fund amount
         money.append(total_money)
 
-    # Add the final fund to the final_funds list
-    final_funds.append(money[-1])
+    # Add the final fund to the database
+    ending_fund = money[-1]
+    db.session.add(Play(total_money=total_money, bet_money=bet_money, total_plays=total_plays, input_string=input_string, ending_fund=ending_fund))
+    db.session.commit()
 
-    return final_funds
+    return {"ending_fund": ending_fund}
 
 
-@app.route('/casino', methods=['POST'])
-def run_casino():
-    data = request.json
-    num_iterations = data['num_iterations']
-    total_money = data['total_money']
-    bet_money = data['bet_money']
-    number_of_bets = data['number_of_bets']
-    user_input = data['user_input']
-    print("run with" + " " + str(num_iterations) + " " + "num of iterations")
-    ending_fund = []
-    if num_iterations == 0 or number_of_bets == 0:
-        return jsonify(error="Invalid input: num_iterations and number_of_bets must be greater than zero")
-    if total_money <= 0 or bet_money <= 0:
-        return jsonify(error="Invalid input: total_money and bet_money must be greater than zero")
-    for i in range(num_iterations):
-        ending_fund.append(play(total_money, bet_money, number_of_bets, user_input)[0])
-    print("the player started with " + "" + str(total_money))
-    avg_ending_fund = sum(ending_fund) / len(ending_fund)
-    return jsonify(ending_fund=ending_fund, avg_ending_fund=avg_ending_fund)
+@app.route('/play', methods=['POST'])
+def play_endpoint():
+    data = request.get_json()
+    try:
+        response = play(data['total_money'], data['bet_money'], data['total_plays'], data['input_string'])
+        if response is not None:
+            return jsonify(response)
+        else:
+            return "Bad request parameters", 400
+    except TypeError as e:
+        return str(e), 400
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
