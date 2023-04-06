@@ -10,6 +10,21 @@
 </head>
 <body>
 {%block body%}
+    <form action="{{ url_for('play_casino') }}" method="POST">
+        <label for="total_money">Total money:</label>
+        <input type="number" id="total_money" name="total_money" required>
+
+        <label for="bet_money">Bet money:</label>
+        <input type="number" id="bet_money" name="bet_money" required>
+
+        <label for="total_plays">Total plays:</label>
+        <input type="number" id="total_plays" name="total_plays" required>
+
+        <label for="input_string">Input string:</label>
+        <input type="text" id="input_string" name="input_string" required>
+
+        <button type="submit">Play Casino</button>
+    </form>
 {%endblock%}
 </body>
 </html>
